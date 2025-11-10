@@ -153,8 +153,8 @@ function Header() {
                         <div className="imgContainer">
                             <img className="nav__img" src="/Img/usuario.png"/>
                         </div>
-                        
-                        <a className="nav_link" href="#">Perfil</a>
+
+                        <Link className="nav_link" to="/perfil">Perfil</Link>
                     </li>
                     <li className="nav_item">
                         <div className="imgContainer">
