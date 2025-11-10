@@ -3,7 +3,6 @@ import { UserAuth } from '../context/AuthContext.jsx';
 import { supabase } from '../supabase/supabase.js';
 import Header from '../Componets/Pagina_principal/Header.jsx';
 import Footer from '../Componets/Pagina_principal/Footer.jsx';
-import Card from '../Componets/Pagina_publicaciones/Publicacion_card.jsx';
 import '../Css/PerfilStyle.css';
 
 export default function Perfil() {
@@ -14,7 +13,7 @@ export default function Perfil() {
     const [nuevaFoto, setNuevaFoto] = useState(null);
     const [vistaPrevia, setVistaPrevia] = useState(null);
     const [cargando, setCargando] = useState(false);
-    const [publicacionesId, setPublicacionesId] = useState([]);
+    const [publicaciones, setPublicaciones] = useState([]);
     const [cargandoPublicaciones, setCargandoPublicaciones] = useState(true);
 
     useEffect(() => {
@@ -63,16 +62,34 @@ export default function Perfil() {
     const cargarPublicaciones = async () => {
         try {
             setCargandoPublicaciones(true);
-            const { data: publicaciones, error } = await supabase
+            const { data: publicacionesData, error } = await supabase
                 .from('publicaciones')
-                .select('id')
+                .select('id, titulo, precio, descripcion, created_at')
                 .eq('usuario_id', user.id)
                 .order('created_at', { ascending: false });
 
             if (error) {
                 console.error('Error al cargar publicaciones:', error);
             } else {
-                setPublicacionesId(publicaciones || []);
+                // Cargar la primera imagen de cada publicación
+                const publicacionesConImagen = await Promise.all(
+                    (publicacionesData || []).map(async (pub) => {
+                        const { data: fotos } = await supabase
+                            .from('fotos_publicacion')
+                            .select('url_foto')
+                            .eq('publicacion_id', pub.id)
+                            .order('orden', { ascending: true })
+                            .limit(1)
+                            .single();
+
+                        return {
+                            ...pub,
+                            imagen: fotos?.url_foto || '/Img/user.png'
+                        };
+                    })
+                );
+
+                setPublicaciones(publicacionesConImagen);
             }
         } catch (error) {
             console.error('Error al cargar publicaciones:', error);
@@ -266,10 +283,24 @@ export default function Perfil() {
 
                     {cargandoPublicaciones ? (
                         <p className="publicaciones__mensaje">Cargando publicaciones...</p>
-                    ) : publicacionesId.length > 0 ? (
-                        <div className="cardsContainer">
-                            {publicacionesId.map((pub) => (
-                                <Card key={pub.id} publicacionId={pub.id} />
+                    ) : publicaciones.length > 0 ? (
+                        <div className="publicaciones__lista">
+                            {publicaciones.map((pub) => (
+                                <div key={pub.id} className="publicacion__item">
+                                    <img
+                                        src={pub.imagen}
+                                        alt={pub.titulo}
+                                        className="publicacion__imagen"
+                                    />
+                                    <div className="publicacion__contenido">
+                                        <h3 className="publicacion__titulo">{pub.titulo}</h3>
+                                        <p className="publicacion__precio">${pub.precio}</p>
+                                        <p className="publicacion__descripcion">{pub.descripcion}</p>
+                                        <p className="publicacion__fecha">
+                                            {new Date(pub.created_at).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                </div>
                             ))}
                         </div>
                     ) : (
