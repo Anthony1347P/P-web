@@ -13,7 +13,6 @@ export default function Perfil() {
     const [nuevaFoto, setNuevaFoto] = useState(null);
     const [vistaPrevia, setVistaPrevia] = useState(null);
     const [cargando, setCargando] = useState(false);
-    const [editando, setEditando] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -23,72 +22,55 @@ export default function Perfil() {
 
     const cargarPerfil = async () => {
         try {
-            // Obtener email del usuario
             setEmail(user.email);
 
-            // Intentar obtener perfil de la tabla perfiles
+            // Obtener nombre del usuario
+            let nombreInicial = '';
+            if (user.user_metadata && user.user_metadata.full_name) {
+                nombreInicial = user.user_metadata.full_name;
+            } else if (user.email) {
+                const partes = user.email.split('@');
+                nombreInicial = partes[0];
+            }
+            setNombre(nombreInicial);
+
+            // Intentar obtener foto de perfil de la tabla perfiles
             const { data: perfil, error } = await supabase
                 .from('perfiles')
-                .select('nombre, foto_perfil_url')
+                .select('foto_perfil_url')
                 .eq('id', user.id)
                 .single();
 
             if (error && error.code !== 'PGRST116') {
                 console.error('Error al cargar perfil:', error);
-                return;
             }
 
-            if (perfil) {
-                // Si existe el perfil, usar los datos
-                setNombre(perfil.nombre || '');
-                if (perfil.foto_perfil_url) {
-                    setFotoPerfilUrl(perfil.foto_perfil_url);
-                }
-            } else {
-                // Si no existe, usar datos del metadata de Google o email
-                let nombreInicial = '';
-                if (user.user_metadata && user.user_metadata.full_name) {
-                    nombreInicial = user.user_metadata.full_name;
-                } else if (user.email) {
-                    const partes = user.email.split('@');
-                    nombreInicial = partes[0];
-                }
-                setNombre(nombreInicial);
-
+            if (perfil && perfil.foto_perfil_url) {
+                setFotoPerfilUrl(perfil.foto_perfil_url);
+            } else if (user.user_metadata && user.user_metadata.avatar_url) {
                 // Si tiene avatar de Google, usarlo
-                if (user.user_metadata && user.user_metadata.avatar_url) {
-                    setFotoPerfilUrl(user.user_metadata.avatar_url);
-                }
-
-                // Crear perfil inicial en la base de datos
-                await crearPerfilInicial(nombreInicial);
+                setFotoPerfilUrl(user.user_metadata.avatar_url);
             }
         } catch (error) {
             console.error('Error al cargar perfil:', error);
         }
     };
 
-    const crearPerfilInicial = async (nombreInicial) => {
-        try {
-            const { error } = await supabase
-                .from('perfiles')
-                .insert({
-                    id: user.id,
-                    nombre: nombreInicial,
-                    foto_perfil_url: user.user_metadata?.avatar_url || null
-                });
-
-            if (error) {
-                console.error('Error al crear perfil inicial:', error);
-            }
-        } catch (error) {
-            console.error('Error al crear perfil inicial:', error);
-        }
-    };
-
     const handleFotoChange = (e) => {
         const file = e.target.files[0];
         if (file) {
+            // Validar tamaño (máximo 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('La imagen es muy grande. Máximo 5MB.');
+                return;
+            }
+
+            // Validar tipo
+            if (!file.type.startsWith('image/')) {
+                alert('Solo se permiten archivos de imagen.');
+                return;
+            }
+
             setNuevaFoto(file);
             const reader = new FileReader();
             reader.onloadend = () => {
@@ -98,10 +80,16 @@ export default function Perfil() {
         }
     };
 
-    const subirFotoPerfil = async () => {
-        if (!nuevaFoto) return null;
+    const handleGuardarFoto = async () => {
+        if (!nuevaFoto) {
+            alert('Selecciona una imagen primero');
+            return;
+        }
+
+        setCargando(true);
 
         try {
+            // Subir foto al storage
             const fileName = `${user.id}/perfil_${Date.now()}_${nuevaFoto.name}`;
 
             const { error: uploadError } = await supabase
@@ -109,58 +97,64 @@ export default function Perfil() {
                 .from('fotos-perfil')
                 .upload(fileName, nuevaFoto);
 
-            if (uploadError) throw uploadError;
+            if (uploadError) {
+                console.error('Error al subir foto:', uploadError);
+                throw new Error('No se pudo subir la imagen. Verifica las políticas de Storage.');
+            }
 
             const { data } = supabase
                 .storage
                 .from('fotos-perfil')
                 .getPublicUrl(fileName);
 
-            return data.publicUrl;
-        } catch (error) {
-            console.error('Error al subir foto:', error);
-            return null;
-        }
-    };
+            const urlNuevaFoto = data.publicUrl;
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setCargando(true);
+            // Verificar si existe el perfil
+            const { data: perfilExiste } = await supabase
+                .from('perfiles')
+                .select('id')
+                .eq('id', user.id)
+                .single();
 
-        try {
-            let urlFotoActualizada = fotoPerfilUrl;
+            if (perfilExiste) {
+                // Actualizar
+                const { error: updateError } = await supabase
+                    .from('perfiles')
+                    .update({
+                        foto_perfil_url: urlNuevaFoto,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', user.id);
 
-            // Si hay una nueva foto, subirla
-            if (nuevaFoto) {
-                const urlNuevaFoto = await subirFotoPerfil();
-                if (urlNuevaFoto) {
-                    urlFotoActualizada = urlNuevaFoto;
-                }
+                if (updateError) throw updateError;
+            } else {
+                // Crear
+                const { error: insertError } = await supabase
+                    .from('perfiles')
+                    .insert({
+                        id: user.id,
+                        nombre: nombre,
+                        foto_perfil_url: urlNuevaFoto
+                    });
+
+                if (insertError) throw insertError;
             }
 
-            // Actualizar perfil en la base de datos
-            const { error } = await supabase
-                .from('perfiles')
-                .update({
-                    nombre: nombre,
-                    foto_perfil_url: urlFotoActualizada,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', user.id);
-
-            if (error) throw error;
-
-            alert('¡Perfil actualizado exitosamente!');
-            setFotoPerfilUrl(urlFotoActualizada);
+            alert('¡Foto de perfil actualizada exitosamente!');
+            setFotoPerfilUrl(urlNuevaFoto);
             setNuevaFoto(null);
             setVistaPrevia(null);
-            setEditando(false);
         } catch (error) {
-            console.error('Error al actualizar perfil:', error);
-            alert('Hubo un error al actualizar el perfil');
+            console.error('Error al actualizar foto:', error);
+            alert('Hubo un error al actualizar la foto de perfil. ' + error.message);
         } finally {
             setCargando(false);
         }
+    };
+
+    const handleCancelar = () => {
+        setNuevaFoto(null);
+        setVistaPrevia(null);
     };
 
     if (!user) {
@@ -168,7 +162,7 @@ export default function Perfil() {
             <div>
                 <Header />
                 <div className="perfil__container">
-                    <p>Cargando...</p>
+                    <p style={{color: '#fff'}}>Cargando...</p>
                 </div>
                 <Footer />
             </div>
@@ -188,85 +182,55 @@ export default function Perfil() {
                             alt="Foto de perfil"
                             className="perfil__foto"
                         />
-                        {editando && (
-                            <div className="perfil__foto__upload">
-                                <label htmlFor="foto-input" className="foto__label">
-                                    Cambiar foto
-                                </label>
-                                <input
-                                    id="foto-input"
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleFotoChange}
-                                    className="foto__input"
-                                />
+
+                        <div className="perfil__foto__upload">
+                            <label htmlFor="foto-input" className="foto__label">
+                                {vistaPrevia ? 'Cambiar imagen' : 'Seleccionar imagen'}
+                            </label>
+                            <input
+                                id="foto-input"
+                                type="file"
+                                accept="image/*"
+                                onChange={handleFotoChange}
+                                className="foto__input"
+                            />
+                        </div>
+
+                        {nuevaFoto && (
+                            <div className="perfil__botones">
+                                <button
+                                    type="button"
+                                    onClick={handleGuardarFoto}
+                                    disabled={cargando}
+                                    className="btn btn--guardar"
+                                >
+                                    {cargando ? 'Guardando...' : 'Guardar Foto'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleCancelar}
+                                    className="btn btn--cancelar"
+                                >
+                                    Cancelar
+                                </button>
                             </div>
                         )}
                     </div>
 
-                    <form onSubmit={handleSubmit} className="perfil__form">
-                        <div className="form__grupo">
-                            <label className="form__label">Email</label>
-                            <input
-                                type="email"
-                                value={email}
-                                disabled
-                                className="form__input form__input--disabled"
-                            />
-                        </div>
-
+                    <div className="perfil__info__principal">
                         <div className="form__grupo">
                             <label className="form__label">Nombre</label>
-                            <input
-                                type="text"
-                                value={nombre}
-                                onChange={(e) => setNombre(e.target.value)}
-                                disabled={!editando}
-                                className={`form__input ${!editando ? 'form__input--disabled' : ''}`}
-                                placeholder="Ingresa tu nombre"
-                            />
+                            <p className="info__valor">{nombre}</p>
                         </div>
 
-                        <div className="perfil__botones">
-                            {!editando ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setEditando(true)}
-                                    className="btn btn--editar"
-                                >
-                                    Editar Perfil
-                                </button>
-                            ) : (
-                                <>
-                                    <button
-                                        type="submit"
-                                        disabled={cargando}
-                                        className="btn btn--guardar"
-                                    >
-                                        {cargando ? 'Guardando...' : 'Guardar Cambios'}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setEditando(false);
-                                            setVistaPrevia(null);
-                                            setNuevaFoto(null);
-                                            cargarPerfil();
-                                        }}
-                                        className="btn btn--cancelar"
-                                    >
-                                        Cancelar
-                                    </button>
-                                </>
-                            )}
+                        <div className="form__grupo">
+                            <label className="form__label">Email</label>
+                            <p className="info__valor">{email}</p>
                         </div>
-                    </form>
+                    </div>
 
                     <div className="perfil__info">
-                        <p className="info__texto">ID de Usuario: {user.id}</p>
-                        <p className="info__texto">
-                            Cuenta creada: {new Date(user.created_at).toLocaleDateString()}
-                        </p>
+                        <p className="info__texto">Cuenta creada: {new Date(user.created_at).toLocaleDateString()}</p>
                     </div>
                 </div>
             </div>

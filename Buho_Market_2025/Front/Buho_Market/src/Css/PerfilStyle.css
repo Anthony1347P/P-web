@@ -3,8 +3,8 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
-    padding: 100px 20px 50px 20px;
+    min-height: calc(100vh - 80px);
+    padding: 120px 20px 80px 20px;
     background: #000000;
     background-image: radial-gradient(circle at center, #1a1a1a 0%, #000000 70%);
 }
@@ -29,7 +29,7 @@
     text-align: center;
     color: #00ff00;
     text-shadow: 0 0 10px rgba(0, 255, 0, 0.5), 0 0 20px rgba(0, 255, 0, 0.3);
-    margin-bottom: 30px;
+    margin: 0 0 30px 0;
     letter-spacing: 2px;
 }
 
@@ -39,6 +39,7 @@
     flex-direction: column;
     align-items: center;
     margin-bottom: 30px;
+    gap: 15px;
 }
 
 .perfil__foto {
@@ -48,14 +49,12 @@
     object-fit: cover;
     border: 4px solid #00ff00;
     box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
-    margin-bottom: 15px;
 }
 
 .perfil__foto__upload {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
 }
 
 .foto__label {
@@ -64,100 +63,45 @@
     font-weight: 700;
     color: #00ff00;
     cursor: pointer;
-    padding: 8px 20px;
+    padding: 10px 25px;
     border: 2px solid #00ff00;
     border-radius: 10px;
     transition: all 0.3s ease;
     background: rgba(0, 255, 0, 0.1);
+    text-align: center;
 }
 
 .foto__label:hover {
     background: rgba(0, 255, 0, 0.2);
     box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    transform: translateY(-2px);
 }
 
 .foto__input {
     display: none;
 }
 
-/* === Formulario === */
-.perfil__form {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.form__grupo {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.form__label {
-    font-family: 'Big Shoulders Display', sans-serif;
-    font-size: 18px;
-    font-weight: 700;
-    color: #00ff00;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.form__input {
-    font-family: 'Big Shoulders Display', sans-serif;
-    font-size: 16px;
-    padding: 12px 15px;
-    background: rgba(0, 0, 0, 0.5);
-    border: 2px solid #00ff00;
-    border-radius: 10px;
-    color: white;
-    transition: all 0.3s ease;
-}
-
-.form__input:focus {
-    outline: none;
-    border-color: #00ff00;
-    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
-    background: rgba(0, 0, 0, 0.7);
-}
-
-.form__input--disabled {
-    background: rgba(50, 50, 50, 0.3);
-    border-color: #555;
-    color: #888;
-    cursor: not-allowed;
-}
-
 /* === Botones === */
 .perfil__botones {
     display: flex;
-    gap: 15px;
+    gap: 10px;
     justify-content: center;
-    margin-top: 20px;
+    margin-top: 15px;
     flex-wrap: wrap;
+    width: 100%;
 }
 
 .btn {
     font-family: 'Big Shoulders Display', sans-serif;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
-    padding: 12px 30px;
+    padding: 10px 25px;
     border: none;
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.3s ease;
     text-transform: uppercase;
     letter-spacing: 1px;
-}
-
-.btn--editar {
-    background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
-    color: #000;
-    box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
-}
-
-.btn--editar:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0 25px rgba(0, 255, 0, 0.8);
 }
 
 .btn--guardar {
@@ -187,9 +131,55 @@
     transform: translateY(-2px);
 }
 
+.btn--editar {
+    background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+    color: #000;
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+}
+
+.btn--editar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 25px rgba(0, 255, 0, 0.8);
+}
+
+/* === Información Principal === */
+.perfil__info__principal {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.form__grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form__label {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: #00ff00;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0;
+}
+
+.info__valor {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 18px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid #00ff00;
+    border-radius: 10px;
+    padding: 12px 15px;
+    margin: 0;
+}
+
 /* === Información adicional === */
 .perfil__info {
-    margin-top: 30px;
+    margin-top: 25px;
     padding-top: 20px;
     border-top: 1px solid rgba(0, 255, 0, 0.3);
 }
@@ -198,18 +188,23 @@
     font-family: 'Big Shoulders Display', sans-serif;
     font-size: 14px;
     color: #888;
-    margin: 8px 0;
+    margin: 5px 0;
     text-align: center;
 }
 
 /* === Responsive === */
 @media (max-width: 600px) {
+    .perfil__container {
+        padding: 100px 15px 60px 15px;
+    }
+
     .perfil__card {
         padding: 30px 20px;
     }
 
     .perfil__titulo {
         font-size: 36px;
+        margin-bottom: 25px;
     }
 
     .perfil__foto {
@@ -218,16 +213,18 @@
     }
 
     .btn {
-        font-size: 16px;
-        padding: 10px 20px;
+        font-size: 14px;
+        padding: 8px 20px;
+        width: 100%;
     }
 
     .perfil__botones {
         flex-direction: column;
-        width: 100%;
+        gap: 8px;
     }
 
-    .btn {
-        width: 100%;
+    .foto__label {
+        font-size: 14px;
+        padding: 8px 20px;
     }
 }
