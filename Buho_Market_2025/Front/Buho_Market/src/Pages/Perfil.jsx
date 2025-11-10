@@ -3,6 +3,7 @@ import { UserAuth } from '../context/AuthContext.jsx';
 import { supabase } from '../supabase/supabase.js';
 import Header from '../Componets/Pagina_principal/Header.jsx';
 import Footer from '../Componets/Pagina_principal/Footer.jsx';
+import Card from '../Componets/Pagina_publicaciones/Publicacion_card.jsx';
 import '../Css/PerfilStyle.css';
 
 export default function Perfil() {
@@ -13,10 +14,13 @@ export default function Perfil() {
     const [nuevaFoto, setNuevaFoto] = useState(null);
     const [vistaPrevia, setVistaPrevia] = useState(null);
     const [cargando, setCargando] = useState(false);
+    const [publicacionesId, setPublicacionesId] = useState([]);
+    const [cargandoPublicaciones, setCargandoPublicaciones] = useState(true);
 
     useEffect(() => {
         if (user) {
             cargarPerfil();
+            cargarPublicaciones();
         }
     }, [user]);
 
@@ -53,6 +57,27 @@ export default function Perfil() {
             }
         } catch (error) {
             console.error('Error al cargar perfil:', error);
+        }
+    };
+
+    const cargarPublicaciones = async () => {
+        try {
+            setCargandoPublicaciones(true);
+            const { data: publicaciones, error } = await supabase
+                .from('publicaciones')
+                .select('id')
+                .eq('usuario_id', user.id)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Error al cargar publicaciones:', error);
+            } else {
+                setPublicacionesId(publicaciones || []);
+            }
+        } catch (error) {
+            console.error('Error al cargar publicaciones:', error);
+        } finally {
+            setCargandoPublicaciones(false);
         }
     };
 
@@ -231,7 +256,25 @@ export default function Perfil() {
 
                     <div className="perfil__info">
                         <p className="info__texto">Cuenta creada: {new Date(user.created_at).toLocaleDateString()}</p>
+                        <p className="info__texto info__texto--id">ID: {user.id}</p>
                     </div>
+                </div>
+
+                {/* Sección de Mis Publicaciones */}
+                <div className="perfil__publicaciones">
+                    <h2 className="publicaciones__titulo">Mis Publicaciones</h2>
+
+                    {cargandoPublicaciones ? (
+                        <p className="publicaciones__mensaje">Cargando publicaciones...</p>
+                    ) : publicacionesId.length > 0 ? (
+                        <div className="cardsContainer">
+                            {publicacionesId.map((pub) => (
+                                <Card key={pub.id} publicacionId={pub.id} />
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="publicaciones__mensaje">No tienes publicaciones aún</p>
+                    )}
                 </div>
             </div>
             <Footer />
